@@ -217,6 +217,7 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
   Future<void> initImageProcess() async {
     _inputImage = InputImage.fromFilePath(widget.imagePath);
     recognisedText = await MLKitProvider.getRecognisedText(_inputImage!);
+
     MLKitProvider.printTextToConsole;
     setState(() {
       _isLoading = false;
@@ -257,8 +258,48 @@ class TextRecognitionVisualization extends StatelessWidget {
     required this.imagePath
   }) : super(key: key);
 
+  Future<ui.Image> _loadImage() async {
+    final File imageFile = File(imagePath);
+    final Uint8List bytes = await imageFile.readAsBytes();
+    final ui.Codec codec = await ui.instantiateImageCodec(bytes);
+    final ui.FrameInfo frameInfo = await codec.getNextFrame();
+    printReorganisedText();
+    //printAllElementsSortedYCoord(recognizedText);
+    return frameInfo.image;
+  }
+
+  void printAllElementsSortedYCoord(RecognizedText recognisedText){
+    List<TextElement> textElementList = [];
+    for(TextBlock block in recognisedText.blocks){
+      for(TextLine line in block.lines){
+        textElementList.addAll(line.elements);
+      }
+    }
+    //Sorts the elements by their Y-Coordinate 
+    textElementList.sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
+    for (TextElement element in textElementList) {
+      //print(element.text);
+    }
+  }
+
+  void printReorganisedText(){
+    List<List<TextElement>> reorganisedText = MLKitProvider.reorganiseText(recognizedText);
+    
+    String result = reorganisedText.map((line) {
+    // Sort each line by X-coordinate before joining
+    //line.sort((a, b) => a.boundingBox.left.compareTo(b.boundingBox.left));
+    return line.map((element) => element.text).join(' ');
+  }).join('\n');
+
+
+    
+    
+    print(result);
+  }
+
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: AppBar(title: Text('Text Recognition Result')),
       body: FutureBuilder<ui.Image>(
@@ -287,11 +328,7 @@ class TextRecognitionVisualization extends StatelessWidget {
     );
   }
 
-  Future<ui.Image> _loadImage() async {
-    final File imageFile = File(imagePath);
-    final Uint8List bytes = await imageFile.readAsBytes();
-    final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-    final ui.FrameInfo frameInfo = await codec.getNextFrame();
-    return frameInfo.image;
-  }
+  
+
+
 }
