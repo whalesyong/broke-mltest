@@ -8,7 +8,12 @@ import 'package:flutter/widgets.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:path/path.dart';
 
-class MLKitProvider extends ChangeNotifier{
+
+class RegExProcessor{
+   
+}
+
+class MyMLKit{
 
   
   static Future<RecognizedText> getRecognisedText(InputImage inputImage) async {
@@ -37,7 +42,8 @@ class MLKitProvider extends ChangeNotifier{
     for (TextElement element in textElementList) {
     //print(element.text);
     }
-    //error is probably after this line
+   
+
     List<List<TextElement>> reorganisedList = [];
     List<TextElement> currentLine = [];
     for (int i = 0; i < textElementList.length; i++) {
@@ -71,6 +77,7 @@ class MLKitProvider extends ChangeNotifier{
     return false;
   }
 
+  
 
 
 }

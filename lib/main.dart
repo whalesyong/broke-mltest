@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -6,8 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:logger/logger.dart';
 import 'package:mltest/providers.dart';
 
+var logger = Logger();
 void main() => runApp(const CameraApp());
 
 class CameraApp extends StatelessWidget {
@@ -85,25 +88,27 @@ class _GalleryImagePickerState extends State<GalleryImagePicker> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children:<Widget> [
-            _image == null 
-              ? const Text('No image selected')
-              : Image.file(_image!),
-            const SizedBox(height: 30,),
-            ElevatedButton(onPressed: (){
-              _loadData();
-              hasImageLoaded = true;
-            }, child: Text('Choose image')),
-
-            _image == null
-            ? ElevatedButton(onPressed: (){}, child: Text('No image to process') )
-            : ElevatedButton(onPressed:()=> Navigator.push(context, MaterialPageRoute(
-              builder: (BuildContext context) => DisplayPictureScreen(imagePath: _image!.path))), 
-            child: Text('Process Image'))
-          ],
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children:<Widget> [
+              _image == null 
+                ? const Text('No image selected')
+                : Image.file(_image!),
+              const SizedBox(height: 30,),
+              ElevatedButton(onPressed: (){
+                _loadData();
+                hasImageLoaded = true;
+              }, child: Text('Choose image')),
+        
+              _image == null
+              ? ElevatedButton(onPressed: (){}, child: Text('No image to process') )
+              : ElevatedButton(onPressed:()=> Navigator.push(context, MaterialPageRoute(
+                builder: (BuildContext context) => DisplayPictureScreen(imagePath: _image!.path))), 
+              child: Text('Process Image'))
+            ],
+          ),
         ),
       ),
     );
@@ -216,9 +221,9 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
 
   Future<void> initImageProcess() async {
     _inputImage = InputImage.fromFilePath(widget.imagePath);
-    recognisedText = await MLKitProvider.getRecognisedText(_inputImage!);
+    recognisedText = await MyMLKit.getRecognisedText(_inputImage!);
 
-    MLKitProvider.printTextToConsole;
+    MyMLKit.printTextToConsole;
     setState(() {
       _isLoading = false;
     });
@@ -226,22 +231,24 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            
+             Image.file(File(widget.imagePath)),
           
-           Image.file(File(widget.imagePath)),
-        
-           
-           ElevatedButton(
-            onPressed: () async {
-              await initImageProcess();
-              
-              Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => TextRecognitionVisualization(
-                recognizedText: recognisedText, imagePath: widget.imagePath)));
-                          
-            }, 
-            child: Text('Process Text'))
-        ],
+             
+             ElevatedButton(
+              onPressed: () async {
+                await initImageProcess();
+                
+                Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => TextRecognitionVisualization(
+                  recognizedText: recognisedText, imagePath: widget.imagePath)));
+                            
+              }, 
+              child: Text('Process Text'))
+          ],
+        ),
       ),
     );
   }
@@ -264,37 +271,21 @@ class TextRecognitionVisualization extends StatelessWidget {
     final ui.Codec codec = await ui.instantiateImageCodec(bytes);
     final ui.FrameInfo frameInfo = await codec.getNextFrame();
     printReorganisedText();
-    //printAllElementsSortedYCoord(recognizedText);
+  
     return frameInfo.image;
   }
 
-  void printAllElementsSortedYCoord(RecognizedText recognisedText){
-    List<TextElement> textElementList = [];
-    for(TextBlock block in recognisedText.blocks){
-      for(TextLine line in block.lines){
-        textElementList.addAll(line.elements);
-      }
-    }
-    //Sorts the elements by their Y-Coordinate 
-    textElementList.sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
-    for (TextElement element in textElementList) {
-      //print(element.text);
-    }
-  }
+ 
 
   void printReorganisedText(){
-    List<List<TextElement>> reorganisedText = MLKitProvider.reorganiseText(recognizedText);
+    List<List<TextElement>> reorganisedText = MyMLKit.reorganiseText(recognizedText);
     
     String result = reorganisedText.map((line) {
     // Sort each line by X-coordinate before joining
-    //line.sort((a, b) => a.boundingBox.left.compareTo(b.boundingBox.left));
     return line.map((element) => element.text).join(' ');
   }).join('\n');
 
-
-    
-    
-    print(result);
+    logger.i(result);
   }
 
   @override
@@ -302,28 +293,30 @@ class TextRecognitionVisualization extends StatelessWidget {
     
     return Scaffold(
       appBar: AppBar(title: Text('Text Recognition Result')),
-      body: FutureBuilder<ui.Image>(
-        future: _loadImage(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            return Center(
-              child: FittedBox(
-                child: SizedBox(
-                  width: snapshot.data!.width.toDouble(),
-                  height: snapshot.data!.height.toDouble(),
-                  child: CustomPaint(
-                    painter: TextRecognitionPainter(
-                      recognizedText: recognizedText,
-                      image: snapshot.data!,
+      body: SingleChildScrollView(
+        child: FutureBuilder<ui.Image>(
+          future: _loadImage(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              return Center(
+                child: FittedBox(
+                  child: SizedBox(
+                    width: snapshot.data!.width.toDouble(),
+                    height: snapshot.data!.height.toDouble(),
+                    child: CustomPaint(
+                      painter: TextRecognitionPainter(
+                        recognizedText: recognizedText,
+                        image: snapshot.data!,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          } else {
-            return Center(child: CircularProgressIndicator());
-          }
-        },
+              );
+            } else {
+              return Center(child: CircularProgressIndicator());
+            }
+          },
+        ),
       ),
     );
   }
