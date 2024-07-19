@@ -2,16 +2,25 @@ import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
+import 'package:mltest/firebase_options.dart';
 import 'package:mltest/providers.dart';
 
 var logger = Logger();
-void main() => runApp(const CameraApp());
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform
+  );
+
+    runApp(CameraApp());
+}
 
 class CameraApp extends StatelessWidget {
   const CameraApp({super.key});
@@ -221,9 +230,9 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
 
   Future<void> initImageProcess() async {
     _inputImage = InputImage.fromFilePath(widget.imagePath);
-    recognisedText = await MyMLKit.getRecognisedText(_inputImage!);
+    recognisedText = await MyMLTextRecognizer.getRecognisedText(_inputImage!);
 
-    MyMLKit.printTextToConsole;
+    MyMLTextRecognizer.printTextToConsole;
     setState(() {
       _isLoading = false;
     });
@@ -270,22 +279,37 @@ class TextRecognitionVisualization extends StatelessWidget {
     final Uint8List bytes = await imageFile.readAsBytes();
     final ui.Codec codec = await ui.instantiateImageCodec(bytes);
     final ui.FrameInfo frameInfo = await codec.getNextFrame();
-    printReorganisedText();
-  
+    await printReorganisedTextAndCategory();
+
     return frameInfo.image;
   }
 
  
 
-  void printReorganisedText(){
-    List<List<TextElement>> reorganisedText = MyMLKit.reorganiseText(recognizedText);
+  Future<void> printReorganisedTextAndCategory() async {
+    TextClassifier _textClassifier = TextClassifier();
+    List<List<TextElement>> reorganisedText = MyMLTextRecognizer.reorganiseText(recognizedText);
     
     String result = reorganisedText.map((line) {
-    // Sort each line by X-coordinate before joining
     return line.map((element) => element.text).join(' ');
   }).join('\n');
 
     logger.i(result);
+
+    String text = MyMLTextRecognizer.returnReorganisedText(reorganisedText);
+    /*
+    _textClassifier.loadModel();
+    try {
+      List predictions  = await _textClassifier.predict(text);
+      logger.i('Prediction: ${predictions}');
+    } catch (e){
+      print(e);
+    }*/
+    //print('Probabilities:');
+    /*print('Food and Beverage: ${outputList[0]}');
+    print('Groceries: ${outputList[1]}');
+    print('Retail: ${outputList[2]}');*/
+    
   }
 
   @override
