@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
+
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:mltest/main.dart';
 import 'package:path/path.dart';
@@ -175,7 +174,7 @@ class MyMLTextRecognizer{
 class TextRecognitionPainter extends CustomPainter {
   final RecognizedText recognizedText;
   final ui.Image image;
-  final textPainter = TextPainter(textDirection: TextDirection.ltr);
+  final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
   TextRecognitionPainter({required this.recognizedText, required this.image});
 
   @override
@@ -211,4 +210,117 @@ class TextRecognitionPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class myRegExpClass{
+  static String extractMostRecentDate(String input) {
+    final datePatterns = [
+      r'\b(\d{2}/\d{2}/\d{2})\b',
+      r'\b(\d{2}/\d{2}/\d{4})\b',
+      r'\b(\d{4}/\d{2}/\d{2})\b',
+      r'\b(\d{4}-\d{2}-\d{2})\b',
+      r'\b(\d{2}-\d{2}-\d{4})\b',
+      r'\b(\d{6})\b',
+    ];
+
+    final dateFormats = [
+      'dd/MM/yy',
+      'dd/MM/yyyy',
+      'yyyy/MM/dd',
+      'yyyy-MM-dd',
+      'dd-MM-yyyy',
+      'yyMMdd',
+      'ddMMyy',
+    ];
+
+    List<DateTime> dates = [];
+
+    for (int i = 0; i < datePatterns.length; i++) {
+      final regex = RegExp(datePatterns[i]);
+      for (var match in regex.allMatches(input)) {
+        try {
+          if (i < dateFormats.length - 1) {
+            dates.add(DateFormat(dateFormats[i]).parse(match.group(1)!));
+          } else {
+            // For 6-digit formats, try both yyMMdd and ddMMyy
+            try {
+              dates.add(DateFormat(dateFormats[dateFormats.length - 2]).parse(match.group(1)!));
+            } catch (e) {
+              dates.add(DateFormat(dateFormats[dateFormats.length - 1]).parse(match.group(1)!));
+            }
+          }
+        } catch (e) {
+          // Ignore invalid dates
+        }
+      }
+    }
+
+    DateTime resultDate;
+    if (dates.isEmpty) {
+      // If no valid dates found, use the current date
+      resultDate = DateTime.now();
+    } else {
+      // Sort dates and find the most recent one
+      dates.sort((a, b) => b.compareTo(a));
+      resultDate = dates.reduce((a, b) => 
+        a.difference(DateTime.now()).abs() < b.difference(DateTime.now()).abs() ? a : b);
+    }
+
+    return DateFormat('yyyy-MM-dd').format(resultDate);
+  }
+
+  static String findLargestAmount(String input) {
+    // Convert input to lowercase for case-insensitive matching
+    input = input.toLowerCase();
+    
+    // Regex for finding numbers after "$"
+    final dollarRegex = RegExp(r'\$\s*(\d+(?:,\d{3})*(?:\.\d{2})?)');
+    
+    // Regex for finding numbers after "visa" or "master"
+    final cardRegex = RegExp(r'(visa|master).*?(\d+(?:,\d{3})*(?:\.\d{2})?)');
+    
+    // Regex for finding numbers after "total"
+    final totalRegex = RegExp(r'total.*?(\d+(?:,\d{3})*(?:\.\d{2})?)');
+    
+    double largestAmount = 0.0;
+    
+    // Function to parse amount string to double
+    double parseAmount(String amount) {
+      return double.parse(amount.replaceAll(',', ''));
+    }
+    
+    // Check for dollar amounts first
+    var matches = dollarRegex.allMatches(input);
+    if (matches.isNotEmpty) {
+      for (var match in matches) {
+        double amount = parseAmount(match.group(1)!);
+        if (amount > largestAmount) {
+          largestAmount = amount;
+        }
+      }
+    } else {
+      // If no dollar amounts, check for card amounts
+      matches = cardRegex.allMatches(input);
+      if (matches.isNotEmpty) {
+        for (var match in matches) {
+          double amount = parseAmount(match.group(2)!);
+          if (amount > largestAmount) {
+            largestAmount = amount;
+          }
+        }
+      } else {
+        // If no card amounts, check for total amounts
+        matches = totalRegex.allMatches(input);
+        for (var match in matches) {
+          double amount = parseAmount(match.group(1)!);
+          if (amount > largestAmount) {
+            largestAmount = amount;
+          }
+        }
+      }
+    }
+    
+    return largestAmount > 0 ? largestAmount.toStringAsFixed(2) : "No amount found";
+  }
+
 }

@@ -297,6 +297,8 @@ class TextRecognitionVisualization extends StatelessWidget {
     logger.i(result);
 
     String text = MyMLTextRecognizer.returnReorganisedText(reorganisedText);
+    logger.i('Date: ${myRegExpClass.extractMostRecentDate(text)}');
+    logger.i('Amount: ${myRegExpClass.findLargestAmount(text)}');
     /*
     _textClassifier.loadModel();
     try {
