@@ -22,6 +22,11 @@ dependencies:
   image_field: ^0.0.10
   image_picker: ^1.1.2
   logger: ^2.3.0
+  tflite_flutter: ^0.10.4   
+  convert: ^3.1.1
+  firebase_core: ^3.2.0
+  cloud_functions: ^5.0.3
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
@@ -29,3 +34,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - lib/assets/text_classification_model.tflite
+    - lib/assets/tokenizer_config.json
